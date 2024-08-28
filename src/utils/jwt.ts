@@ -4,7 +4,7 @@ const SECRET_KEY = process.env.SECRET_KEY!;
 const REFRESH_SECRET_KEY = process.env.REFRESH_SECRET_KEY!;
 
 export const generateAccessToken = (user: any) => {
-  return jwt.sign(user, SECRET_KEY, { expiresIn: '1m', algorithm:'HS512' });
+  return jwt.sign(user, SECRET_KEY, { expiresIn: '15m', algorithm:'HS512' });
 };
 
 export const generateRefreshToken = (user: any) => {
