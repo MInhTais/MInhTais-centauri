@@ -4,7 +4,7 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import db from "../db/db_connect"
 import path from 'path';
-import authRoutes from './routes/auth,route';
+import authRoutes from './routes/auth.route';
 import { decentralizationsService, findByEmailService, getGoogleUser, getOauthGooleToken, GoogleUser, refreshTokenService, registerService } from './services/auth.service';
 import { generateAccessToken, generateRefreshToken } from './utils/jwt';
 

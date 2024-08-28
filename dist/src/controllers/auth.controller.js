@@ -1,46 +1,45 @@
-import {Request,Response} from 'express' 
-import bcrypt from 'bcryptjs';
-import { decentralizationsService, findByEmailService, refreshTokenService, registerService, updateEmailVerifiedToken } from '~/services/auth.service';
-import { generateAccessToken, generateRefreshToken, verifyAccessToken, verifyRefreshToken } from '~/utils/jwt';
-import { HttpStatus } from '~/constants/httpStatus';
-import { responseError, responseSuccess } from '~/utils/response';
-import { sendEmail } from '~/utils/mailer';
-
-export const loginController = async (req:Request,res:Response) => {
-  const { email, password } : {email:string, password:string} = req.body;
-  const userPromies = findByEmailService({email})
-  const [userWithPassword] = await Promise.all([userPromies])
-  if (userWithPassword && bcrypt.compareSync(password, userWithPassword.password as string)) {
-    const access_token = generateAccessToken({ email: userWithPassword.email, name: userWithPassword.name,role:userWithPassword.decentralizations });
-    const refresh_token = generateRefreshToken({ email: userWithPassword.email, name: userWithPassword.name });
-    await refreshTokenService({email:userWithPassword.email,token:refresh_token})
-    const user: Omit<typeof userWithPassword, 'password'> = (({ password, ...rest }) => rest)(userWithPassword);
-    res.json(
-      responseSuccess({data:{access_token,refresh_token,user},message:'Đăng nhập thành công',status:HttpStatus.OK})
-    );
-  } else {
-    res.status(422).json(
-      responseError({message:'Lỗi',data:{
-        password: "Email hoặc mật khẩu không đúng"
-      }})
-    )
-  }
-}
-
-export const registerController = async (req: Request,res: Response) => {
-  const {email,name,password} = req.body
-  const userPromies = await findByEmailService({email:email})
-
-  if(!userPromies){
-    const result = await registerService({email,name,password})
-
-    await decentralizationsService({email:result[0].email})
-    const userPromies = await findByEmailService({email:email})
-    const [userProfile] = await Promise.all([userPromies])
-    const accessToken = generateAccessToken({ email: result[0].email, name: result[0].name,role:userProfile?.decentralizations });
-    await updateEmailVerifiedToken({email:result[0].email,token:accessToken})
-    const subject = 'Verify your email!';
-    const htmlContent = `
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.verifyPasswordController = exports.refreshTokenController = exports.registerController = exports.loginController = void 0;
+const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const auth_service_1 = require("../services/auth.service");
+const jwt_1 = require("../utils/jwt");
+const httpStatus_1 = require("../constants/httpStatus");
+const response_1 = require("../utils/response");
+const mailer_1 = require("../utils/mailer");
+const loginController = async (req, res) => {
+    const { email, password } = req.body;
+    const userPromies = (0, auth_service_1.findByEmailService)({ email });
+    const [userWithPassword] = await Promise.all([userPromies]);
+    if (userWithPassword && bcryptjs_1.default.compareSync(password, userWithPassword.password)) {
+        const access_token = (0, jwt_1.generateAccessToken)({ email: userWithPassword.email, name: userWithPassword.name, role: userWithPassword.decentralizations });
+        const refresh_token = (0, jwt_1.generateRefreshToken)({ email: userWithPassword.email, name: userWithPassword.name });
+        await (0, auth_service_1.refreshTokenService)({ email: userWithPassword.email, token: refresh_token });
+        const user = (({ password, ...rest }) => rest)(userWithPassword);
+        res.json((0, response_1.responseSuccess)({ data: { access_token, refresh_token, user }, message: 'Đăng nhập thành công', status: httpStatus_1.HttpStatus.OK }));
+    }
+    else {
+        res.status(422).json((0, response_1.responseError)({ message: 'Lỗi', data: {
+                password: "Email hoặc mật khẩu không đúng"
+            } }));
+    }
+};
+exports.loginController = loginController;
+const registerController = async (req, res) => {
+    const { email, name, password } = req.body;
+    const userPromies = await (0, auth_service_1.findByEmailService)({ email: email });
+    if (!userPromies) {
+        const result = await (0, auth_service_1.registerService)({ email, name, password });
+        await (0, auth_service_1.decentralizationsService)({ email: result[0].email });
+        const userPromies = await (0, auth_service_1.findByEmailService)({ email: email });
+        const [userProfile] = await Promise.all([userPromies]);
+        const accessToken = (0, jwt_1.generateAccessToken)({ email: result[0].email, name: result[0].name, role: userProfile?.decentralizations });
+        await (0, auth_service_1.updateEmailVerifiedToken)({ email: result[0].email, token: accessToken });
+        const subject = 'Verify your email!';
+        const htmlContent = `
     <!DOCTYPE html>
         <html>
         <head>
@@ -295,67 +294,59 @@ export const registerController = async (req: Request,res: Response) => {
 
         </body>
         </html>
-    `
-    await sendEmail(result[0].email, subject, htmlContent);
-    res.json(
-      responseSuccess({message:'Đăng kí thành công vui lòng xác thực mail',data:{},status:HttpStatus.OK})
-    );
-  }
-  else {
-    res.json(
-      responseError({message:'Lỗi',data:{
-        password: "Tài khoản đã tồn tại"
-      }})
-    )
-  }
-}
-
-export const refreshTokenController = async (req: Request, res: Response) => {
-  const { refresh_token } = req.body;
-  console.log(refresh_token)
-
-  if (!refresh_token) return res.status(401).send('Refresh Token Required');
-
-  try {
-    const user:any = verifyRefreshToken(refresh_token);
-    const userPromies = findByEmailService({email:user.email})
-    const [userWithPassword] = await Promise.all([userPromies])
-    if(userWithPassword){
-      const access_token = generateAccessToken({ email: userWithPassword.email, name: userWithPassword.name,role:userWithPassword.decentralizations });
-      res.json(
-        responseSuccess({data:{access_token},message:'refreshToken thành công',status:HttpStatus.OK})
-      );
+    `;
+        await (0, mailer_1.sendEmail)(result[0].email, subject, htmlContent);
+        res.json((0, response_1.responseSuccess)({ message: 'Đăng kí thành công vui lòng xác thực mail', data: {}, status: httpStatus_1.HttpStatus.OK }));
     }
-  } catch (error) {
-    if (error instanceof Error) {
-      res.status(401).json({
-       message:error.message,
-       data:{}
-      })
-   }  }
+    else {
+        res.json((0, response_1.responseError)({ message: 'Lỗi', data: {
+                password: "Tài khoản đã tồn tại"
+            } }));
+    }
 };
-
-export const verifyPasswordController = async (req: Request, res: Response) =>{
-  const token = req.params.token;
-  const {email}:any = verifyAccessToken(token);
-  const user = await findByEmailService({email})
-  if(user?.email && token === user.emailVerifiedToken){
-    await updateEmailVerifiedToken({email,token:''})
-    const access_token = generateAccessToken({ email: user.email, name: user.name,role:user.decentralizations });
-    const refresh_token = generateRefreshToken({ email: user.email, name: user.name });
-    const profile = await findByEmailService({email})
-    await refreshTokenService({email:user.email,token:refresh_token})
-    const { password, ...userWithoutPassword } = profile as { password: string | null; [key: string]: any };
-    console.log(userWithoutPassword)
-    return res.redirect(
-      `http://localhost:3000/auth/verify-password?access_token=${access_token}&refresh_token=${refresh_token}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`
-    );
-  }
-  else{
-    const message = 'Tài khoản đã được xác thực'
-    const type = 'error'
-    return res.redirect(
-      `http://localhost:3000/auth/verify-password?type=${type}&message=${message}`
-    );
-  }
-}
+exports.registerController = registerController;
+const refreshTokenController = async (req, res) => {
+    const { refresh_token } = req.body;
+    console.log(refresh_token);
+    if (!refresh_token)
+        return res.status(401).send('Refresh Token Required');
+    try {
+        const user = (0, jwt_1.verifyRefreshToken)(refresh_token);
+        const userPromies = (0, auth_service_1.findByEmailService)({ email: user.email });
+        const [userWithPassword] = await Promise.all([userPromies]);
+        if (userWithPassword) {
+            const access_token = (0, jwt_1.generateAccessToken)({ email: userWithPassword.email, name: userWithPassword.name, role: userWithPassword.decentralizations });
+            res.json((0, response_1.responseSuccess)({ data: { access_token }, message: 'refreshToken thành công', status: httpStatus_1.HttpStatus.OK }));
+        }
+    }
+    catch (error) {
+        if (error instanceof Error) {
+            res.status(401).json({
+                message: error.message,
+                data: {}
+            });
+        }
+    }
+};
+exports.refreshTokenController = refreshTokenController;
+const verifyPasswordController = async (req, res) => {
+    const token = req.params.token;
+    const { email } = (0, jwt_1.verifyAccessToken)(token);
+    const user = await (0, auth_service_1.findByEmailService)({ email });
+    if (user?.email && token === user.emailVerifiedToken) {
+        await (0, auth_service_1.updateEmailVerifiedToken)({ email, token: '' });
+        const access_token = (0, jwt_1.generateAccessToken)({ email: user.email, name: user.name, role: user.decentralizations });
+        const refresh_token = (0, jwt_1.generateRefreshToken)({ email: user.email, name: user.name });
+        const profile = await (0, auth_service_1.findByEmailService)({ email });
+        await (0, auth_service_1.refreshTokenService)({ email: user.email, token: refresh_token });
+        const { password, ...userWithoutPassword } = profile;
+        console.log(userWithoutPassword);
+        return res.redirect(`http://localhost:3000/auth/verify-password?access_token=${access_token}&refresh_token=${refresh_token}&user=${encodeURIComponent(JSON.stringify(userWithoutPassword))}`);
+    }
+    else {
+        const message = 'Tài khoản đã được xác thực';
+        const type = 'error';
+        return res.redirect(`http://localhost:3000/auth/verify-password?type=${type}&message=${message}`);
+    }
+};
+exports.verifyPasswordController = verifyPasswordController;
